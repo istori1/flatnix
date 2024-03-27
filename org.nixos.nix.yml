@@ -1,0 +1,125 @@
+app-id: org.nixos.nix
+runtime: org.freedesktop.Platform
+runtime-version: "23.08"
+sdk: org.freedesktop.Sdk
+separate-locales: false
+command: nix
+
+finish-args:
+  - --share=network
+
+modules:
+  - name: boost
+    buildsystem: simple
+    build-commands:
+      - cd tools/build && bison -y -d -o src/engine/jamgram.cpp src/engine/jamgram.y
+      - ./bootstrap.sh --prefix=$FLATPAK_DEST --with-libraries=context,system,thread
+      - ./b2 install variant=release link=shared runtime-link=shared cxxflags="$CXXFLAGS"
+        linkflags="$LDFLAGS" -j $FLATPAK_BUILDER_N_JOBS
+    sources:
+      - type: archive
+        url: https://deb.debian.org/debian/pool/main/b/boost1.81/boost1.81_1.81.0.orig.tar.xz
+        sha256: 449afecf5ef98edc0a46826cde6af98d1fb95c2e92962fa8c9e3eb1e8a2928ec
+        x-checker-data:
+          type: html
+          url: https://packages.debian.org/source/bookworm/boost1.81
+          version-pattern: boost1.81 \((\d+\.\d+\.\d+)
+          url-template: https://deb.debian.org/debian/pool/main/b/boost1.81/boost1.81_$version.orig.tar.xz
+      - type: archive
+        url: https://deb.debian.org/debian/pool/main/b/boost1.81/boost1.81_1.81.0-5+deb12u1.debian.tar.xz
+        sha256: 22351ebdc0e9dd4eee4ffa3b3a1075b5f7bf2b28e592dd2790e612264bfeb07e
+        dest: debs
+        x-checker-data:
+          type: html
+          url: https://packages.debian.org/source/bookworm/boost1.81
+          version-pattern: boost1.81 \(([^\)]+)\)
+          url-template: https://deb.debian.org/debian/pool/main/b/boost1.81/boost1.81_$version.debian.tar.xz
+      - type: shell
+        commands:
+          - for p in $(cat debs/patches/series); do if [[ $p != "#"* ]]; then patch
+            -Np1 -i "debs/patches/$p" -d .; fi; done
+
+  - name: libsodium
+    sources:
+      - type: archive
+        url: https://deb.debian.org/debian/pool/main/libs/libsodium/libsodium_1.0.18.orig.tar.gz
+        sha256: d59323c6b712a1519a5daf710b68f5e7fde57040845ffec53850911f10a5d4f4
+        x-checker-data:
+          type: html
+          url: https://packages.debian.org/source/bookworm/libsodium
+          version-pattern: libsodium \((\d+\.\d+\.\d+)
+          url-template: https://deb.debian.org/debian/pool/main/libs/libsodium/libsodium_$version.orig.tar.gz
+      - type: archive
+        url: https://deb.debian.org/debian/pool/main/libs/libsodium/libsodium_1.0.18-1.debian.tar.xz
+        sha256: 50863d8fc4f0a2a86f7b69745514455f0b9d74cf45906523c675ffe5b8db0377
+        dest: debs
+        x-checker-data:
+          type: html
+          url: https://packages.debian.org/source/bookworm/libsodium
+          version-pattern: libsodium \(([^\)]+)\)
+          url-template: https://deb.debian.org/debian/pool/main/libs/libsodium/libsodium_$version.debian.tar.xz
+      - type: shell
+        commands:
+          - for p in $(cat debs/patches/series); do if [[ $p != "#"* ]]; then patch
+            -Np1 -i "debs/patches/$p" -d .; fi; done
+
+  - name: nlohmann-json3
+    buildsystem: cmake-ninja
+    sources:
+      - type: archive
+        url: https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_3.11.3.orig.tar.gz
+        sha256: 0d8ef5af7f9794e3263480193c491549b2ba6cc74bb018906202ada498a79406
+        x-checker-data:
+          type: html
+          url: https://packages.debian.org/source/trixie/nlohmann-json3
+          version-pattern: nlohmann-json3 \((\d+\.\d+\.\d+)
+          url-template: https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_$version.orig.tar.gz
+      - type: archive
+        url: https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_3.11.3-1.debian.tar.xz
+        sha256: b34b12aad8b78ca96ec3590da379c2687152d7d6e1c634094c970b3c9569e6ad
+        dest: debs
+        x-checker-data:
+          type: html
+          url: https://packages.debian.org/source/trixie/nlohmann-json3
+          version-pattern: nlohmann-json3 \(([^\)]+)\)
+          url-template: https://deb.debian.org/debian/pool/main/n/nlohmann-json3/nlohmann-json3_$version.debian.tar.xz
+      - type: shell
+        commands:
+          - for p in $(cat debs/patches/series); do if [[ $p != "#"* ]]; then patch
+            -Np1 -i "debs/patches/$p" -d .; fi; done
+
+  - name: editline
+    sources:
+      - type: archive
+        url: https://github.com/troglobit/editline/releases/download/1.17.1/editline-1.17.1.tar.gz
+        sha256: 781e03b6a935df75d99fb963551e2e9f09a714a8c49fc53280c716c90bf44d26
+
+  - name: libgit2
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DBUILD_CLI=OFF
+      - -DBUILD_EXAMPLES=OFF
+      - -DBUILD_TESTS=OFF
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DDISABLE_ONLINE_TESTS=ON
+      - -DUSE_GSSAPI=OFF
+      - -DUSE_NTLMCLIENT=OFF
+    sources:
+      - type: archive
+        url: https://github.com/libgit2/libgit2/archive/refs/tags/v1.8.0.tar.gz
+        sha256: 9e1d6a880d59026b675456fbb1593c724c68d73c34c0d214d6eb848e9bbd8ae4
+
+  - name: nix
+    config-opts:
+      - --disable-cpuid
+      - --disable-doc-gen
+      - --disable-gc
+      - --disable-unit-tests
+      - --enable-lto
+    sources:
+      - type: archive
+        url: https://github.com/NixOS/nix/archive/refs/tags/2.21.1.tar.gz
+        sha256: 5c3b40a587388f5c3433424fda481ed6e8dbb31935a859e4b207ce79e40a4810
+      - type: shell
+        commands:
+          - autoreconf -vfi
